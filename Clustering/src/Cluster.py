@@ -13,7 +13,7 @@ def read_csv(file_path):
     #removing mouse id as the id might influence clustering. Creating a bias if the mice were given a id according to their
     #class. We only want clustering on the basis of proteins.
     heterogeneous_data = np.genfromtxt(csvfile, delimiter = ",", names = True, usecols = range(1, 82),
-            # converters = {31:make_date, 32:make_date },
+            # converters = {31:make_date},
             dtype = [("DYRK1A_N", np.float64), ("ITSN1_N", np.float64),
                      ("BDNF_N", np.float64), ("NR1_N", np.float64), ("NR2A_N", np.float64),("pAKT_N", np.float64),
                      ("pBRAF_N", np.float64), ("pCAMKII_N", np.float64), ("pCREB_N", np.float64),
