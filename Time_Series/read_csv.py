@@ -25,4 +25,4 @@ if __name__ == "__main__":
     plt.plot(data)
     plt.show()
     print "Overall we can see an increasing trend with some seasonality. But, we can not say thta the data is stationary right now."
-    print "Checking if the data is stationary with the help of plots of rolling statistics and dickey fuller test"
+    print "Checking if the data is stationary with the help of plots of rolling statistics and dickey fuller test."
