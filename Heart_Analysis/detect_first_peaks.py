@@ -18,31 +18,31 @@ def detect_peak(data, frequency, window_size):
     avg_heart_rate = np.mean(data.hart)
     #The beginning of the signal will have a moving average of NaN. Replacing that with the mean of the series.
     moving_average = [avg_heart_rate if math.isnan(element) else element for element in moving_average]
+    moving_average = [x*1.2 for x in moving_average] #setting the threshold to the standard 0.2mV value for P and T
     data["hart_rolling_mean"] = moving_average
-    moving_average = [x*1.2 for x in moving_average] #setting the threshold to the general 0.2mV value of P and T wave
-    # peak.
+    # waves' peaks.
 
     #Mark regions of interest
     window = []
     peak_xlist = []
-    #use a conter to move o different data columns
-    position = 0
-    for data_point in data.hart:
+    #use a counter to move o different data values
+    for position, data_point in enumerate(data.hart):
         rolling_mean = data.hart_rolling_mean[position]
 
         if (data_point < rolling_mean) and (len(window) < 1): #i.e an R peak has not been encountered - no activity.
-            position += 1
+           pass
+            # position += 1
 
         elif (data_point > rolling_mean): #When the signal comes above local mean, i.e. the region of interest starts
             window.append(data_point)
-            position += 1
+            # position += 1
 
         else:
             maximum = max(window) # maximum data point within the window
             beat_R_x = position - len(window) + window.index(maximum) #Finding x-axis value of R point
             peak_xlist.append(beat_R_x) #Add detected R value's
             window = []
-            position += 1
+            # position += 1
 
     R_beat_value = [data.hart[ind] for ind in peak_xlist]
     return (peak_xlist, R_beat_value, moving_average)
