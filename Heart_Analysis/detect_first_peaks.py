@@ -45,9 +45,13 @@ def detect_peak(data, frequency, window_size):
             # position += 1
 
     R_beat_value = [data.hart[ind] for ind in peak_xlist]
-    return (data, peak_xlist, R_beat_value, moving_average)
+    heart_measures = {"peak_xlist": peak_xlist,
+                      "R_beat_value": R_beat_value,
+                      "moving_average": moving_average
+                      }
+    return (data, heart_measures)
 
-def calc_heart_rate(peak_x_list, frequency):
+def calc_heart_rate(heart_measure, frequency):
     """
     This function calculates the average beats per minute (BPM) over the signal. We calculate the distance between the
     peaks, take the average and convert to a per minute value
@@ -56,6 +60,7 @@ def calc_heart_rate(peak_x_list, frequency):
     :param frequency: integer vale of the frequency of recording of signal
     :return:
     """
+    peak_x_list = heart_measure["peak_xlist"]
     RR_list = []
     count = 1
     while (count < len(peak_x_list)):
@@ -66,7 +71,8 @@ def calc_heart_rate(peak_x_list, frequency):
         count += 1
     # 60000 ms (1 minute) / average R-R interval of signal
     bpm = 60000/np.mean(RR_list)
-    return bpm
+    heart_measure ["bpm"] = bpm
+    return heart_measure
 
 
 if __name__ == "__main__":
@@ -74,15 +80,23 @@ if __name__ == "__main__":
     plot_data(data, "Heart Rate Signal")
     frequency = 100 #This dataset has a given frequency of 100Hz
     window_size = 0.75 # one sided window size as a proportion of the sampling frequency
-    data_new, x_value, y_value, moving_average = detect_peak(data, frequency, window_size)
-    bpm = calc_heart_rate(x_value, frequency)
+    data_new, heart_measures = detect_peak(data, frequency, window_size)
+    heart_measures = calc_heart_rate(heart_measures, frequency)
     # print "bpm is: %0.01f" % bpm
 
     plt.title ("Detected Peaks in Heart Rate Signal")
     plt.xlim(0, 2500)
-    plt.plot(data.hart, alpha = 0.5, color = "blue", label = "raw signal")#aplha sets the transparency level
-    plt.plot(moving_average, color = "black", ls = "-.", label = "moving average")
-    plt.scatter(x = x_value, y = y_value, color = "green", label = "average: %.1f BPM" %bpm)
+    plt.plot(data.hart, alpha = 0.5,
+             color = "blue",
+             label = "raw signal")#aplha sets the transparency level
+    plt.plot(heart_measures["moving_average"],
+             color = "black",
+             ls = "-.",
+             label = "moving average")
+    plt.scatter(x = heart_measures["peak_xlist"],
+                y = heart_measures["R_beat_value"],
+                color = "green",
+                label = "average: %.1f BPM" %heart_measures["bpm"])
     plt.legend(loc = "best")
     plt.show()
 
