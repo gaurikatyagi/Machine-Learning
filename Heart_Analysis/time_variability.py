@@ -1,17 +1,6 @@
 # The IBI, SDNN, SDSD, RMSSD en pNNx (also frequency domain measures) are grouped under "Heart Rate Variability" (HRV)
 # measures, because they give information about how the heart rate varies over time.
 
-#Frequency Domain Data
-#On the frequency side of the heart rate signal the most often found measures are called the HF (High Frequency),
-# MF (Mid Frequency) and LF (Low Frequency) bands. The MF and HF bands are taken together and labeled HF.
-# LF and HF roughly correspond to 0.04-0.15Hz for the LF band and 0.16-0.5Hz for the HF band.
-# The LF band seems related to short-term blood pressure variation, the HF band to breathing rate.
-
-#The frequency spectrum is calculated performing a Fast Fourier Transform over the R-R interval dataseries.
-
-## We will calculate the measure for HF and LF by first by re-sampling the signal so we can estimate the spectrum,
-# then transforming the re-sampled signal to the frequency domain,
-# and then integrating the area under the curve at the given intervals.
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,23 +20,36 @@ def calc_rrdif_rrsqdiff (heart_measure):
     return heart_measure
 
 def calc_time_domain(heart_measure):
+    """
+    This function will calculate the "Heart Rate Variability"
+    1. interbeat interval (the mean distance of interval between heartbeats
+    2. SDNN (standard deviation of intervals between heartbeats)
+    3. SDSD (standard deviation of successive differences between adjacent R-R intervals
+    4. RMSSD (root mean square of successive differences between adjacent RR-intervals)
+    5. pNN50 and pNN20 (the portion of differences greater than 50ms and 20ms respectively)
+
+    :param heart_measure:
+    :return:
+    """
     #Calculating the mean interbeat interval- mean of x values of RR values
-    ibi = np.mean(heart_measure["peak_xlist"])
-    print "Inter-beat interval is: ", ibi
+    heart_measure["ibi"] = np.mean(heart_measure["peak_xlist"])
+    # print "Inter-beat interval is: ", ibi
 
     #Calculating standard deviations of all R-R intervals
-    standard_deviation = np.std(heart_measure["peak_xlist"])
-    print "standard deviations of R values in the heart rate: ", standard_deviation
+    heart_measure["standard_deviation"] = np.std(heart_measure["peak_xlist"])
+
+    # print "standard deviations of R values in the heart rate: ", standard_deviation
 
     #Calculating the square root of the mean of list of squared differences
-    rmssd = np.sqrt(np.mean(heart_measure["RR_sqdiff"]))
+    heart_measure["rmssd"] = np.sqrt(np.mean(heart_measure["RR_sqdiff"]))
 
     #Create a list of all values with RR_diff over 20 and 50
     nn20 = [x for x in heart_measure["RR_diff"] if (heart_measure["RR_diff"]>20)]
     nn50 = [x for x in heart_measure["RR_diff"] if (heart_measure["RR_diff"]>50)]
-    pnn20 = float(len(nn20)) / float(len(heart_measure["RR_diff"]))  # Calculate the proportion of NN20, NN50 intervals to all intervals
-    pnn50 = float(len(nn50)) / float(len(heart_measure["RR_diff"]))  # Note the use of float(), because we don't want Python to think we want an int() and round the proportion to 0 or 1
-    print "pNN20, pNN50:", pnn20, pnn50
+    heart_measure["pnn20"] = float(len(nn20)) / float(len(heart_measure["RR_diff"]))  # Calculate the proportion of NN20, NN50 intervals to all intervals
+    heart_measure["pnn50"] = float(len(nn50)) / float(len(heart_measure["RR_diff"]))  # Note the use of float(), because we don't want Python to think we want an int() and round the proportion to 0 or 1
+    # print "pNN20, pNN50:", pnn20, pnn50
+    return heart_measure
 
 if __name__ == "__main__":
     data = read_csv("data.csv")
@@ -74,5 +76,6 @@ if __name__ == "__main__":
     plt.legend(loc="best")
     plt.show()
 
-    heart_measures = calc_rrdif_rrsqdiff(heart_measures)
-    calc_time_domain(heart_measures)
+    heart_measures = calc_time_domain(calc_rrdif_rrsqdiff(heart_measures))
+    for k in heart_measures:
+        print k
