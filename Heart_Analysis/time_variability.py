@@ -77,5 +77,8 @@ if __name__ == "__main__":
     plt.show()
 
     heart_measures = calc_time_domain(calc_rrdif_rrsqdiff(heart_measures))
-    for k in heart_measures:
-        print k
+    # for k in heart_measures:
+    #     print k
+    plt.plot(heart_measures["R_beat_value"])
+    plt.title("RR Intervals")
+    plt.show()

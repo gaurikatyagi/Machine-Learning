@@ -72,6 +72,7 @@ def calc_heart_rate(heart_measure, frequency):
     # 60000 ms (1 minute) / average R-R interval of signal
     bpm = 60000/np.mean(RR_list)
     heart_measure ["bpm"] = bpm
+    heart_measure["RR_list"] = RR_list
     return heart_measure
 
 
