@@ -18,7 +18,7 @@ def detect_peak(data, frequency, window_size):
     avg_heart_rate = np.mean(data.hart)
     #The beginning of the signal will have a moving average of NaN. Replacing that with the mean of the series.
     moving_average = [avg_heart_rate if math.isnan(element) else element for element in moving_average]
-    moving_average = [x*1.2 for x in moving_average] #setting the threshold to the standard 0.2mV value for P and T
+    # moving_average = [x*1.2 for x in moving_average] #setting the threshold to the standard 0.2mV value for P and T
     # waves' peaks.
     data["hart_rolling_mean"] = moving_average
 
@@ -29,7 +29,8 @@ def detect_peak(data, frequency, window_size):
     for position, data_point in enumerate(data.hart):
         rolling_mean = data.hart_rolling_mean[position]
 
-        if (data_point < rolling_mean) and (len(window) < 1): #i.e an R peak has not been encountered - no activity.
+        if (data_point <= rolling_mean) and (len(window) <= 1):
+            #i.e an R peak has not been encountered - no activity/ signal drop
            pass
             # position += 1
 
@@ -86,7 +87,7 @@ if __name__ == "__main__":
     # print "bpm is: %0.01f" % bpm
 
     plt.title ("Detected Peaks in Heart Rate Signal")
-    plt.xlim(0, 2500)
+    # plt.xlim(0, 2500)
     plt.plot(data.hart, alpha = 0.5,
              color = "blue",
              label = "raw signal")#aplha sets the transparency level
