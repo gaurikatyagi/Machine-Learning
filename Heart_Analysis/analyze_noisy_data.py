@@ -50,6 +50,11 @@ def rolling_mean(data, window_size, frequency):
     data["hart_rolling_mean"] = moving_average
     return data
 
+def calc_freq_rate(data):
+    sample_timer = [x for x in data["timer"]] # dataset.timer is a ms counter with start of recording at '0'
+    frequency_measure["frequency"] = (len(sample_timer)/sample_timer[-1])*1000 #Divide total length of dataset by last timer
+    # entry. This is in ms, so multiply by 1000 to get Hz value
+
 def detect_peaks(data):
     """
     This function detects the peak values i.e the R values in the signal of the type QRS complex. It adds to the
@@ -140,7 +145,8 @@ def plot_data(data, title):
 if __name__ == "__main__":
     dataset = read_data("noisy_data.csv")
     window_size = 0.75
-    frequency = 100
+    calc_freq_rate(dataset)
+    frequency = frequency_measure["frequency"]#100
     dataset_moving_average = rolling_mean(dataset, window_size, frequency)
     detect_peaks(dataset_moving_average)
     dataset = dataset_moving_average[["hart", "hart_rolling_mean"]]
