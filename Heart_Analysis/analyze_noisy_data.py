@@ -14,7 +14,7 @@ import math
 from scipy.interpolate import interp1d
 import sys
 
-time_measures = {}
+signal_measures = {}
 
 def read_data(filename):
     """
@@ -39,6 +39,26 @@ def rolling_mean(data, window_size, frequency):
     data["hart_rolling_mean"] = moving_average
     return data
 
+def detect_peaks(data):
+    window = []
+    peak_position_list = []
+    temp = None
+    for position, datapoint in enumerate(data["hart"]):
+        rolling_mean_value = data["hart_rolling_mean"][position]
+        if (datapoint>rolling_mean_value):
+            window.append(datapoint) #put value of signal in window if the signal value is more than the mean
+        elif (datapoint<=rolling_mean_value and len(window)<=1):
+            pass
+        else:
+            R_value = max(window)
+            R_position = position-len(window)+window.index(R_value)
+            peak_position_list.append(R_position)
+            window = []
+    signal_measures["R_positions"] = peak_position_list
+    signal_measures["R_values"] = [data["hart"][peaks] for peaks in peak_position_list]
+
+
+
 def plot_data(data, title):
     data.plot(title = title)
     plt.show()
@@ -48,5 +68,6 @@ if __name__ == "__main__":
     window_size = 0.75
     frequency = 100
     dataset_moving_average = rolling_mean(dataset, window_size, frequency)
+    detect_peaks(dataset_moving_average)
     plot_data(dataset_moving_average, "Heart Rate signal with moving average")
     # print dataset_moving_average
