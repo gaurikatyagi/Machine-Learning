@@ -39,9 +39,14 @@ def rolling_mean(data, window_size, frequency):
     data["hart_rolling_mean"] = moving_average
     return data
 
+def plot_data(data, title):
+    data.plot(title = title)
+    plt.show()
+
 if __name__ == "__main__":
     dataset = read_data("noisy_data.csv")
     window_size = 0.75
     frequency = 100
     dataset_moving_average = rolling_mean(dataset, window_size, frequency)
-    print dataset_moving_average
+    plot_data(dataset_moving_average, "Heart Rate signal with moving average")
+    # print dataset_moving_average
