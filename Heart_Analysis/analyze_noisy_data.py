@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import os
 import math
 from scipy.interpolate import interp1d
+from scipy.signal import butter, lfilter
 import sys
 
 signal_measures = {}
@@ -52,8 +53,20 @@ def rolling_mean(data, window_size, frequency):
 
 def calc_freq_rate(data):
     sample_timer = [x for x in data["timer"]] # dataset.timer is a ms counter with start of recording at '0'
-    frequency_measure["frequency"] = (len(sample_timer)/sample_timer[-1])*1000 #Divide total length of dataset by last timer
-    # entry. This is in ms, so multiply by 1000 to get Hz value
+    frequency_measure["frequency"] = (len(sample_timer)/sample_timer[-1])*100 #Divide total length of dataset by last timer
+    # entry. This is in deci second, so multiply by 100 to get Hz value
+
+def butter_lowpass(cutoff, frequency, order = 5): #5th order butterpassfilter
+    nyquist_frequency = 0.5*frequency #Nyquist frequency is half the sampling frequency
+    normal_cutoff = cutoff/nyquist_frequency
+    b, a = butter(order, normal_cutoff, btype = "low", analog = False)
+    return b, a
+
+def butter_lowpass_filter(data, cutoff, frequency, order):
+    b, a = butter_lowpass(cutoff, frequency, order)
+    y = lfilter(b, a, data)
+    return y
+
 
 def detect_peaks(data):
     """
@@ -107,7 +120,7 @@ def calc_ts_measures():
     """
     This function fills the time-measure values of the signals in the dictionary time_measures
     """
-    time_measures["bpm"] = 6000/np.mean(signal_measures["RR_msdiff"]) #beats per minute
+    time_measures["bpm"] = 60000/np.mean(signal_measures["RR_msdiff"]) #beats per minute
     time_measures["ibi"] = np.mean(signal_measures["RR_msdiff"]) #interbeat interval
     time_measures["sdnn"] = np.std(signal_measures["RR_msdiff"]) #standard deviation of milisecond difference between R values
     time_measures["sdsd"] = np.std(signal_measures["RR_diff"]) #standard deviation of standard differences between R values
@@ -143,11 +156,22 @@ def plot_data(data, title):
     plt.show()
 
 if __name__ == "__main__":
-    dataset = read_data("noisy_data.csv")
+    data = read_data("noisy_data.csv")
     window_size = 0.75
-    calc_freq_rate(dataset)
+    calc_freq_rate(data)
     frequency = frequency_measure["frequency"]#100
-    dataset_moving_average = rolling_mean(dataset, window_size, frequency)
+    print "Frequency of the data is: ", frequency
+    filtered = butter_lowpass_filter(data = data["hart"], cutoff = 2.5, frequency = frequency, order = 5)
+    plt.subplot(211)
+    plt.plot(data["hart"], color = "red", label = "original hart", alpha = 0.5)
+    plt.legend(loc = "auto")
+    plt.subplot(212)
+    plt.plot(filtered, color="green", label="filtered hart", alpha=0.5)
+    plt.legend(loc = "auto")
+    plt.suptitle("original v/s filtered data")
+    plt.show()
+    data["hart"] = filtered
+    dataset_moving_average = rolling_mean(data, window_size, frequency)
     detect_peaks(dataset_moving_average)
     dataset = dataset_moving_average[["hart", "hart_rolling_mean"]]
     dataset.plot(title = "Heart Rate signal with moving average")
