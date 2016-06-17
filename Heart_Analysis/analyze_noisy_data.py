@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import os
 import math
 from scipy.interpolate import interp1d
-from scipy.signal import butter, lfilter
+from scipy import signal
 import sys
 
 signal_measures = {}
@@ -59,22 +59,25 @@ def calc_freq_rate(data):
 def butter_lowpass(cutoff, frequency, order = 5): #5th order butterpassfilter
     nyquist_frequency = 0.5*frequency #Nyquist frequency is half the sampling frequency
     normal_cutoff = cutoff/nyquist_frequency
-    b, a = butter(order, normal_cutoff, btype = "low", analog = False)
+    b, a = signal.butter(order, normal_cutoff, btype = "low", analog = False)
     return b, a
 
 def butter_lowpass_filter(data, cutoff, frequency, order):
     b, a = butter_lowpass(cutoff, frequency, order)
-    y = lfilter(b, a, data)
+    y = signal.lfilter(b, a, data)
     return y
 
-
-def detect_peaks(data):
+def detect_peaks(data, moving_average_percent, freq):
     """
     This function detects the peak values i.e the R values in the signal of the type QRS complex. It adds to the
     measures dictionary, all the R values and their x coordinates
     :param data: pandas dataframe which stores the dataset
+    :param moving_average_percent: integer value which stores the trial value of moving average
+    :param freq: calculated frequency of the signal
     :return: This function does not return anything. It updates the dictionary, signal_measures
     """
+    # print moving_average_percent
+    roll_mean = [x+((moving_average_percent/100)*x) for x in data["hart_rolling_mean"]]
     window = []
     peak_position_list = []
     for position, datapoint in enumerate(data["hart"]):
@@ -90,6 +93,48 @@ def detect_peaks(data):
             window = []
     signal_measures["R_positions"] = peak_position_list
     signal_measures["R_values"] = [data["hart"][peaks] for peaks in peak_position_list]
+    signal_measures["roll_mean"] = roll_mean
+    R_R_measures(freq)
+    signal_measures["RR_standard_deviation"] = np.std(signal_measures["RR_msdiff"])
+
+def fit_peaks(data, fs):
+    moving_average_list = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100] #list with
+    #moving average raise perccentages
+    rr_standard_deviation = []
+    for ma in moving_average_list: #detect peaks with all moving average percentages
+        detect_peaks(data, ma, fs)
+        bpm = (len(signal_measures["R_positions"])/(len(data["hart"])/fs)*60)
+        rr_standard_deviation.append((signal_measures["RR_standard_deviation"], bpm, ma))
+    for sd, bpm_item, ma_item in rr_standard_deviation:
+        if (sd>1 and (bpm_item>30 and bpm_item<130)):
+            signal_measures["best"]= [sd, ma_item] #the items in rr_standard_deviation are sorted by moving average as they
+            #are in the same sequence we fed in
+            break
+    # print signal_measures["best"]
+    detect_peaks(data, signal_measures["best"][1], fs)
+
+def check_peaks():
+    RR_msdiff = signal_measures["RR_msdiff"]
+    R_positions = signal_measures["R_positions"]
+    R_values = signal_measures["R_values"]
+    upper_threshold = np.mean(RR_msdiff) + 300 #all values which come after 300ms of the mean value
+    lower_threshold = np.mean(RR_msdiff) - 300 # all values which come 300ms before the mean millisecond distance between values
+    removed_beats_position = []
+    removed_beats_y = []
+    RR_ms_diff_corrected = []
+    R_positions_corrected = []
+    R_values_corrected =[]
+    for index in range(len(RR_msdiff)):
+        if (RR_msdiff[index] <upper_threshold and RR_ms_diff_corrected>lower_threshold):
+            RR_ms_diff_corrected.append((RR_msdiff[index]))
+            R_positions_corrected.append(R_positions[index])
+            R_values_corrected.append(R_values[index])
+        else:
+            removed_beats_position.append(R_positions[index])
+            removed_beats_y.append(R_values[index])
+    signal_measures["RR_msdiff_corrected"] = RR_ms_diff_corrected
+    signal_measures["R_positions_corrected"] = R_positions_corrected
+    signal_measures["R_values_corrected"] = R_values_corrected
 
 def R_R_measures(frequency):
     """
@@ -120,9 +165,9 @@ def calc_ts_measures():
     """
     This function fills the time-measure values of the signals in the dictionary time_measures
     """
-    time_measures["bpm"] = 60000/np.mean(signal_measures["RR_msdiff"]) #beats per minute
-    time_measures["ibi"] = np.mean(signal_measures["RR_msdiff"]) #interbeat interval
-    time_measures["sdnn"] = np.std(signal_measures["RR_msdiff"]) #standard deviation of milisecond difference between R values
+    time_measures["bpm"] = 60000/np.mean(signal_measures["RR_msdiff_corrected"]) #beats per minute
+    time_measures["ibi"] = np.mean(signal_measures["RR_msdiff_corrected"]) #interbeat interval
+    time_measures["sdnn"] = np.std(signal_measures["RR_msdiff_corrected"]) #standard deviation of milisecond difference between R values
     time_measures["sdsd"] = np.std(signal_measures["RR_diff"]) #standard deviation of standard differences between R values
     time_measures["rmsd"] = np.sqrt(np.mean(signal_measures["RR_sqdiff"]))
     nn_20 = [x for x in signal_measures["RR_diff"] if (x>20)]
@@ -146,8 +191,8 @@ def calc_frequency_measures(data, frequency):
     frequency_measure["hf"] = np.trapz(abs(y[(frequency_f>=0.16) & (frequency_f<=0.5)]))
 
 def plot_data(data, title):
-    R_positions = signal_measures["R_positions"]
-    ybeat = signal_measures["R_values"]
+    R_positions = signal_measures["R_positions_corrected"]
+    ybeat = signal_measures["R_values_corrected"]
     plt.title(title)
     plt.plot(data["hart"], alpha=0.5, color='blue', label="raw signal")
     plt.plot(data["hart_rolling_mean"], color='green', label="moving average")
@@ -172,7 +217,9 @@ if __name__ == "__main__":
     plt.show()
     data["hart"] = filtered
     dataset_moving_average = rolling_mean(data, window_size, frequency)
-    detect_peaks(dataset_moving_average)
+    # detect_peaks(dataset_moving_average)
+    fit_peaks(dataset_moving_average, frequency)
+    check_peaks()
     dataset = dataset_moving_average[["hart", "hart_rolling_mean"]]
     dataset.plot(title = "Heart Rate signal with moving average")
 
